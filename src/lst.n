@@ -198,10 +198,10 @@ void lst__empty(lst* sbj){
 
 
 //last
-boo  lst__isEmpty(lst* sbj          ){ return sbj->len == 0; }
-void lst__last(   lst* sbj, iref dst){ lst__safe_get(sbj, sbj->len-1, dst); }
-void lst__rmLast( lst* sbj          ){ lst__rm(      sbj, sbj->len-1     ); }
-void lst__popLast(lst* sbj, iref dst){ lst__pop(     sbj, sbj->len-1, dst); }
+GUboo lst__isEmpty(lst* sbj          ){ return sbj->len == 0; }
+void  lst__last(   lst* sbj, iref dst){ lst__safe_get(sbj, sbj->len-1, dst); }
+void  lst__rmLast( lst* sbj          ){ lst__rm(      sbj, sbj->len-1     ); }
+void  lst__popLast(lst* sbj, iref dst){ lst__pop(     sbj, sbj->len-1, dst); }
 
 
 
