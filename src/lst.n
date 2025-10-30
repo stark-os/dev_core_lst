@@ -15,8 +15,8 @@ typedef struct LST_CHK lst_chk;
 
 //data structure: main
 typedef struct {
-	ulng     len;
-	ulng     itmSz;
+	GUulng   len;
+	GUulng   itmSz;
 	lst_chk* head;
 } lst;
 
@@ -98,7 +98,7 @@ typedef struct {
 // ---------------- BASICS ----------------
 
 //existence
-lst* lst__new(ulng itmSz){
+lst* lst__new(GUulng itmSz){
 	if(itmSz == 0){ return null; }
 	lst* res   = heap__new(sizeof(lst));
 	res->len   = 0;
@@ -115,16 +115,16 @@ void lst__free(lst* sbj){
 
 
 //unsafe indexing
-static lst_chk* lst__getChk(lst* sbj, ulng idx){
+static lst_chk* lst__getChk(lst* sbj, GUulng idx){
 	lst_chk* cur = sbj->head;
-	for(ulng i=0; i < idx; i++){ cur = (ref)(cur->nxt); }
+	for(GUulng i=0; i < idx; i++){ cur = (ref)(cur->nxt); }
 	return cur;
 }
 
 #ifndef LST__UNSAFE_ACCESS_ALLOWED
 static
 #endif
-void lst__unsafe_get(lst* sbj, ulng idx, iref dst){
+void lst__unsafe_get(lst* sbj, GUulng idx, iref dst){
 	iref ir = {
 		.base   = lst__getChk(sbj, idx)->dat, //    Inside lst,     chks have no offset with allocated adr
 		.offset = 0                      //and inside lst_chk, dats have no offset with allocated adr neither
@@ -139,7 +139,7 @@ void lst__unsafe_get(lst* sbj, ulng idx, iref dst){
 #ifndef LST__UNSAFE_ACCESS_ALLOWED
 static
 #endif
-void lst__unsafe_set(lst* sbj, ulng idx, iref src){
+void lst__unsafe_set(lst* sbj, GUulng idx, iref src){
 	iref ir = {
 		.base   = lst__getChk(sbj, idx)->dat, //    Inside lst,     chks have no offset with allocated adr
 		.offset = 0                           //and inside lst_chk, dats have no offset with allocated adr neither
@@ -154,13 +154,13 @@ void lst__unsafe_set(lst* sbj, ulng idx, iref src){
 
 
 //safe indexing
-void lst__safe_get(lst* sbj, ulng idx, iref dst){
+void lst__safe_get(lst* sbj, GUulng idx, iref dst){
 	if(idx >= sbj->len){ LLE__OOB return; }
 	LLE__SCC
 	lst__unsafe_get(sbj, idx, dst);
 }
 
-void lst__safe_set(lst* sbj, ulng idx, iref src){
+void lst__safe_set(lst* sbj, GUulng idx, iref src){
 	if(idx >= sbj->len){ LLE__OOB return; }
 	LLE__SCC
 	lst__unsafe_set(sbj, idx, src);
@@ -169,7 +169,7 @@ void lst__safe_set(lst* sbj, ulng idx, iref src){
 
 
 //rm - pop - empty
-void lst__rm(lst* sbj, ulng idx){
+void lst__rm(lst* sbj, GUulng idx){
 	if(idx >= sbj->len){ LLE__OOB return; }
 	LLE__SCC
 	lst_chk* chk = lst__getChk(sbj, idx);
@@ -186,13 +186,13 @@ void lst__rm(lst* sbj, ulng idx){
 	heap__free(chk);
 }
 
-void lst__pop(lst* sbj, ulng idx, iref dst){
+void lst__pop(lst* sbj, GUulng idx, iref dst){
 	lst__safe_get(sbj, idx, dst);
 	lst__rm(sbj, idx);
 }
 
 void lst__empty(lst* sbj){
-	for(ulng i=0; i < sbj->len; i++){ lst__rm(sbj, 0); } //rm 1st elm, "len" times
+	for(GUulng i=0; i < sbj->len; i++){ lst__rm(sbj, 0); } //rm 1st elm, "len" times
 }
 
 
@@ -235,7 +235,7 @@ void lst__push(lst* sbj, iref src){
 
 //actions as a whole
 void lst__overwrite(lst* sbj, iref src){
-	for(ulng i=0; i < sbj->len; i++){ lst__unsafe_set(sbj, i, src); }
+	for(GUulng i=0; i < sbj->len; i++){ lst__unsafe_set(sbj, i, src); }
 }
 
 
@@ -247,7 +247,7 @@ lst* lst__copy(lst* src){
 		.base   = heap__new(src->itmSz),
 		.offset = 0
 	};
-	for(ulng i=0; i < src->len; i++){
+	for(GUulng i=0; i < src->len; i++){
 		lst__unsafe_get(src, i, itm);
 		lst__push(dst, itm);
 	}
