@@ -99,11 +99,11 @@ typedef struct {
 
 //existence
 lst* lst__new(GUumax itmSz){
-	if(itmSz == 0){ return null; }
+	if(itmSz == 0){ return GEnull; }
 	lst* res   = heap__new(sizeof(lst));
 	res->len   = 0;
 	res->itmSz = itmSz;
-	res->head  = null;
+	res->head  = GEnull;
 	return res;
 }
 
@@ -210,7 +210,7 @@ void lst__push(lst* sbj, iref src){
 
 	//allocate new chk
 	lst_chk* newChk = heap__new(sizeof(lst_chk));
-	newChk->nxt     = null;                       // <---- in this implementation, this is facultative
+	newChk->nxt     = GEnull;                     // <---- in this implementation, this is facultative
 
 	//allocate & set dat in chk
 	newChk->dat = heap__new(sbj->itmSz);
