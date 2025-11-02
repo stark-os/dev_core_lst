@@ -19,6 +19,7 @@ typedef struct {
 	GUumax   itmSz;
 	lst_chk* head;
 } lst;
+typedef lst* GUlst;
 
 
 
@@ -98,16 +99,16 @@ typedef struct {
 // ---------------- BASICS ----------------
 
 //existence
-lst* lst__new(GUumax itmSz){
+GUlst lst__new(GUumax itmSz){
 	if(itmSz == 0){ return GEnull; }
-	lst* res   = heap__new(sizeof(lst));
+	GUlst res  = heap__new(sizeof(lst));
 	res->len   = 0;
 	res->itmSz = itmSz;
 	res->head  = GEnull;
 	return res;
 }
 
-void lst__free(lst* sbj){
+void lst__free(GUlst sbj){
 	lst__empty(sbj);
 	heap__free(sbj);
 }
@@ -115,7 +116,7 @@ void lst__free(lst* sbj){
 
 
 //unsafe indexing
-static lst_chk* lst__getChk(lst* sbj, GUumax idx){
+static lst_chk* lst__getChk(GUlst sbj, GUumax idx){
 	lst_chk* cur = sbj->head;
 	for(GUumax i=0; i < idx; i++){ cur = (ref)(cur->nxt); }
 	return cur;
@@ -124,10 +125,10 @@ static lst_chk* lst__getChk(lst* sbj, GUumax idx){
 #ifndef LST__UNSAFE_ACCESS_ALLOWED
 static
 #endif
-void lst__unsafe_get(lst* sbj, GUumax idx, iref dst){
+void GTGUlst_Funsafe__get(GUlst sbj, GUumax idx, iref dst){
 	iref ir = {
 		.base   = lst__getChk(sbj, idx)->dat, //    Inside lst,     chks have no offset with allocated adr
-		.offset = 0                      //and inside lst_chk, dats have no offset with allocated adr neither
+		.offset = 0                           //and inside lst_chk, dats have no offset with allocated adr neither
 	};
 	#ifdef LST__HEAP_SAFE
 	heap__safe_w(ir, dst, sbj->itmSz); //however, we don't know about usr dst (can be anything)
@@ -139,7 +140,7 @@ void lst__unsafe_get(lst* sbj, GUumax idx, iref dst){
 #ifndef LST__UNSAFE_ACCESS_ALLOWED
 static
 #endif
-void lst__unsafe_set(lst* sbj, GUumax idx, iref src){
+void GTGUlst_Funsafe__set(GUlst sbj, GUumax idx, iref src){
 	iref ir = {
 		.base   = lst__getChk(sbj, idx)->dat, //    Inside lst,     chks have no offset with allocated adr
 		.offset = 0                           //and inside lst_chk, dats have no offset with allocated adr neither
@@ -154,22 +155,22 @@ void lst__unsafe_set(lst* sbj, GUumax idx, iref src){
 
 
 //safe indexing
-void lst__safe_get(lst* sbj, GUumax idx, iref dst){
+void GTGUlst_Fsafe__get(GUlst sbj, GUumax idx, iref dst){
 	if(idx >= sbj->len){ LLE__OOB return; }
 	LLE__SCC
-	lst__unsafe_get(sbj, idx, dst);
+	GTGUlst_Funsafe__get(sbj, idx, dst);
 }
 
-void lst__safe_set(lst* sbj, GUumax idx, iref src){
+void GTGUlst_Fsafe__set(GUlst sbj, GUumax idx, iref src){
 	if(idx >= sbj->len){ LLE__OOB return; }
 	LLE__SCC
-	lst__unsafe_set(sbj, idx, src);
+	GTGUlst_Funsafe__set(sbj, idx, src);
 }
 
 
 
 //rm - pop - empty
-void lst__rm(lst* sbj, GUumax idx){
+void GTGUlst_Frm(GUlst sbj, GUumax idx){
 	if(idx >= sbj->len){ LLE__OOB return; }
 	LLE__SCC
 	lst_chk* chk = lst__getChk(sbj, idx);
@@ -186,27 +187,27 @@ void lst__rm(lst* sbj, GUumax idx){
 	heap__free(chk);
 }
 
-void lst__pop(lst* sbj, GUumax idx, iref dst){
-	lst__safe_get(sbj, idx, dst);
-	lst__rm(sbj, idx);
+void GTGUlst_Fpop(GUlst sbj, GUumax idx, iref dst){
+	GTGUlst_Fsafe__get(sbj, idx, dst);
+	GTGUlst_Frm(sbj, idx);
 }
 
-void lst__empty(lst* sbj){
-	for(GUumax i=0; i < sbj->len; i++){ lst__rm(sbj, 0); } //rm 1st elm, "len" times
+void GTGUlst_Fempty(GUlst sbj){
+	for(GUumax i=0; i < sbj->len; i++){ GTGUlst_Frm(sbj, 0); } //rm 1st elm, "len" times
 }
 
 
 
 //last
-GUboo lst__isEmpty(lst* sbj          ){ return sbj->len == 0; }
-void  lst__last(   lst* sbj, iref dst){ lst__safe_get(sbj, sbj->len-1, dst); }
-void  lst__rmLast( lst* sbj          ){ lst__rm(      sbj, sbj->len-1     ); }
-void  lst__popLast(lst* sbj, iref dst){ lst__pop(     sbj, sbj->len-1, dst); }
+GUboo GTGUlst_FisEmpty(GUlst sbj          ){ return sbj->len == 0; }
+void  GTGUlst_Flast(   GUlst sbj, iref dst){ GTGUlst_Fsafe__get(sbj, sbj->len-1, dst); }
+void  GTGUlst_FrmLast( GUlst sbj          ){ GTGUlst_Frm(      sbj, sbj->len-1     ); }
+void  GTGUlst_FpopLast(GUlst sbj, iref dst){ GTGUlst_Fpop(     sbj, sbj->len-1, dst); }
 
 
 
 //push
-void lst__push(lst* sbj, iref src){
+void GTGUlst_Fpush(GUlst sbj, iref src){
 
 	//allocate new chk
 	lst_chk* newChk = heap__new(sizeof(lst_chk));
@@ -225,7 +226,7 @@ void lst__push(lst* sbj, iref src){
 	#endif
 
 	//attach to lst: empty => to head
-	if(lst__isEmpty(sbj)){ sbj->head = newChk; }
+	if(GTGUlst_FisEmpty(sbj)){ sbj->head = newChk; }
 
 	//attach to lst: not-empty => to last
 	else{ lst__getChk(sbj, sbj->len-1)->nxt = newChk; }
@@ -234,23 +235,26 @@ void lst__push(lst* sbj, iref src){
 
 
 //actions as a whole
-void lst__overwrite(lst* sbj, iref src){
-	for(GUumax i=0; i < sbj->len; i++){ lst__unsafe_set(sbj, i, src); }
+void GTGUlst_Foverwrite(GUlst sbj, iref src){
+	for(GUumax i=0; i < sbj->len; i++){ GTGUlst_Funsafe__set(sbj, i, src); }
 }
 
 
 
 //actions between lsts
-lst* lst__copy(lst* src){
-	lst* dst = lst__new(src->itmSz);
+void GTGUlst_Fcopy(GUlst src, GUlst dst){
+	if(src->itmSz != dst->itmSz){  LLE__FAI return; }
+	LLE__SCC
+
+	//clear dst lst to add src content instead
+	GTGUlst_Fempty(dst);
 	iref itm = {
 		.base   = heap__new(src->itmSz),
 		.offset = 0
 	};
 	for(GUumax i=0; i < src->len; i++){
-		lst__unsafe_get(src, i, itm);
-		lst__push(dst, itm);
+		GTGUlst_Funsafe__get(src, i, itm);
+		GTGUlst_Fpush(dst, itm);
 	}
 	heap__free(itm.base);
-	return dst;
 }

@@ -1,0 +1,14 @@
+tGUlst		 p,1,ref
+
+fGTGUlst_Fsafe__get	void,GUlst,GUumax,iref
+fGTGUlst_Fsafe__set	void,GUlst,GUumax,iref
+fGTGUlst_Frm		void,GUlst,GUumax
+fGTGUlst_Fpop		void,GUlst,GUumax,iref
+fGTGUlst_Fempty		void,GUlst
+fGTGUlst_FisEmpty	GUboo,GUlst
+fGTGUlst_Flast		void,GUlst,iref
+fGTGUlst_FrmLast	void,GUlst
+fGTGUlst_FpopLast	void,GUlst,iref
+fGTGUlst_Fpush		void,GUlst,iref
+fGTGUlst_Foverwrite	void,GUlst,iref
+fGTGUlst_Fcopy		void,GUlst,GUlst
