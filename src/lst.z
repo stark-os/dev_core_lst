@@ -1,0 +1,224 @@
+// ---------------- DEFINITIONS ----------------
+
+//data structure: chk
+prv typ lst_chk {
+	ref          dat,
+	ref[lst_chk] nxt
+}
+
+//data structure: main
+pub typ lst {
+	umax    len,
+	umax    itmSz,
+	lst_chk head
+}
+
+
+
+
+
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ LISTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                                 Lists by I.A.
+
+        These lst objects are "single linked lists" with reference to their NEXT
+    neighbor. Only one sens of going through the list is possible and the only
+    access to data is by using the main instance "head" which refers to the 1st
+    element of the list.
+
+
+
+    PROS & CONS:
+
+    Advantages among other common structures:
+        - No maximum length
+        - Does not require big allocation blocks => optimal memory re-use
+        - Items can be added & removed at any index
+        - Can be initialized empty
+    Disadvantages among other common structures:
+        - Quickly spread memory usage among different places (locality issues)
+        - Uses more memory to store elements (dynamic chain chunks to be stored)
+        - Operates allocations at runtime when adding/removing elements.
+        - Can only be allocated on heap
+
+
+
+    A WORD ON MEMORY MANAGEMENT WITH THIS COMMON STRUCTURE:
+
+        This program adds a bunch of functions to work with lst objects containing
+    references of a specified size in heap. Every data is stored in heap and user
+    never has visibility over internal allocations & memory blocks.
+
+        Every interaction on a dynamic amount of memory involves copy from an
+    existing heap location to another. This way, user loose responsability of the
+    data engaged in any of these operations.
+
+    The only calls involving memory changes at user level are new/free() then.
+
+
+
+    Contact: https://github.com/iasebsil83
+
+    Let's Code !                                  By I.A..
+******************************************************************************************
+
+    LICENSE:
+
+    stark-os/dev/core/lst
+    Copyright (C) 2025 Sebastien SILVANO
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library.
+
+    If not, see <https://www.gnu.org/licenses/>.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+
+
+
+
+
+// ---------------- BASICS ----------------
+
+//existence
+pub fct lst.init(umax itmSz) {}
+
+pub fct lst.free() { sbj.empty() }
+
+
+
+//unsafe indexing
+prv fct lst.getChk(umax idx) lst_chk {
+	lst_chk cur = sbj.head
+	for i on idx { cur = cur.nxt$lst_chk }
+	ret cur
+}
+
+#CFG  LST__UNSAFE_ACCESS_ALLOWED { pub \}
+#!CFG LST__UNSAFE_ACCESS_ALLOWED { prv \}
+fct lst.unsafe_get(umax idx, ref dst, umax offset) {
+	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  sbj.getChk(sbj, idx).dat, 0, dst, offset, sbj.itmSz) }
+	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(sbj.getChk(sbj, idx).dat, 0, dst, offset, sbj.itmSz) }
+}
+
+#CFG  LST__UNSAFE_ACCESS_ALLOWED { pub \}
+#!CFG LST__UNSAFE_ACCESS_ALLOWED { prv \}
+fct lst.unsafe_set(umax idx, ref src, umax offset) {
+	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  src, offset, sbj.getChk(sbj, idx).dat, 0, sbj.itmSz) }
+	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(src, offset, sbj.getChk(sbj, idx).dat, 0, sbj.itmSz) }
+}
+
+
+
+//safe indexing
+pub fct lst.safe_get(umax idx, ref dst, umax offset) {
+	if idx >= sbj.len { #{lle_oob} ret }
+	#{lle_scc}
+	sbj.unsafe_get(idx, dst, offset)
+}
+
+pub fct lst.safe_set(umax idx, ref src, umax offset) {
+	if idx >= sbj.len { #{lle_oob} ret }
+	#{lle_scc}
+	sbj.unsafe_set(idx, src, offset)
+}
+
+
+
+//rm - pop - empty
+pub fct lst.rm(umax idx){
+	if idx >= sbj.len { #{lle_oob} ret }
+	#{lle_scc}
+	lst_chk chk = sbj.getChk(idx)
+
+	//case 1: not the 1st chk => short-circuit using prev chk
+	if idx { sbj.getChk(idx-1).nxt = chk.nxt }
+
+	//case 2: 1st chk => attach new head directly
+	els { sbj.head = chk.nxt }
+
+	//free allocated dat + chk
+	sbj.len -= 1
+	^Heap.free(chk.dat)
+	^Heap.free(chk)
+}
+
+pub fct lst.pop(umax idx, ref dst, umax offset){
+	sbj.safe_get(idx, dst, offset)
+	sbj.rm(idx)
+}
+
+pub fct lst.empty(GUlst sbj){
+	for i in sbj { sbj.rm(0) } //rm 1st elm, "len" times
+}
+
+
+
+//last
+pub fct lst.isEmpty() boo {
+	ret sbj.len == 0
+}
+pub fct lst.last(ref dst, umax offset) {
+	sbj.safe_get(sbj.len-1, dst, offset)
+}
+pub fct lst.rmLast() {
+	sbj.rm(sbj.len-1)
+}
+pub fct lst.popLast(ref dst, umax offset) {
+	sbj.pop(sbj.len-1, dst, offset)
+}
+
+
+
+//push
+pub fct lst.push(ref src, umax offset) {
+
+	//allocate new chk
+	lst_chk newChk = ^Heap.new(#lst_chk)
+	newChk.nxt     = null                // <---- in this implementation, this is facultative
+
+	//allocate & set dat in chk
+	newChk.dat = ^Heap.new(sbj.itmSz)
+	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  src, offset, newChk.dat, 0, sbj.itmSz) } //direct write (tiny optimization)
+	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(src, offset, newChk.dat, 0, sbj.itmSz) }
+
+	//attach to lst: empty => to head
+	if sbj.isEmpty() { sbj.head = newChk }
+
+	//attach to lst: not-empty => to last
+	els{ sbj.getChk(sbj.len-1).nxt = newChk }
+}
+
+
+
+//actions as a whole
+pub fct lst.overwrite(ref src, umax offset){
+	for i in sbj { sbj.unsafe_set(i, src, offset) }
+}
+
+
+
+//actions between lsts
+pub fct lst.copy(lst dst) {
+	if sbj.itmSz != dst.itmSz { #{lle_fai} ret }
+	#{lle_scc}
+
+	//clear dst lst to add src content instead
+	dst.empty()
+	ref itm = ^Heap.new(sbj.itmSz)
+	for i in sbj {
+		sbj.unsafe_get(i, itm, 0)
+		dst.push(itm, 0)
+	}
+	^Heap.free(itm)
+}
