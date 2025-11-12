@@ -8,8 +8,8 @@ prv typ lst_chk {
 
 //data structure: main
 pub typ lst {
-	umax    len,
-	umax    itmSz,
+	smax    len,
+	smax    itmSz,
 	lst_chk head
 }
 
@@ -91,29 +91,29 @@ pub typ lst {
 // ---------------- BASICS ----------------
 
 //existence
-pub fct lst.init(umax itmSz) {}
+pub fct lst.init(smax itmSz) {}
 
 pub fct lst.free() { sbj.empty() }
 
 
 
 //unsafe indexing
-prv fct lst.getChk(umax idx) lst_chk {
+prv fct lst.getChk(smax idx) lst_chk {
 	lst_chk cur = sbj.head
 	for i on idx { cur = cur.nxt$lst_chk }
 	ret cur
 }
 
-#CFG  LST__UNSAFE_ACCESS_ALLOWED { pub \}
-#!CFG LST__UNSAFE_ACCESS_ALLOWED { prv \}
-fct lst.unsafe_get(umax idx, ref dst, umax offset) {
+#CFG  LST__UNSAFE_ACCESS { pub \}
+#!CFG LST__UNSAFE_ACCESS { prv \}
+fct lst.unsafe_get(smax idx, ref dst, smax offset) {
 	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  sbj.getChk(sbj, idx).dat, 0, dst, offset, sbj.itmSz) }
 	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(sbj.getChk(sbj, idx).dat, 0, dst, offset, sbj.itmSz) }
 }
 
-#CFG  LST__UNSAFE_ACCESS_ALLOWED { pub \}
-#!CFG LST__UNSAFE_ACCESS_ALLOWED { prv \}
-fct lst.unsafe_set(umax idx, ref src, umax offset) {
+#CFG  LST__UNSAFE_ACCESS { pub \}
+#!CFG LST__UNSAFE_ACCESS { prv \}
+fct lst.unsafe_set(smax idx, ref src, smax offset) {
 	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  src, offset, sbj.getChk(sbj, idx).dat, 0, sbj.itmSz) }
 	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(src, offset, sbj.getChk(sbj, idx).dat, 0, sbj.itmSz) }
 }
@@ -121,13 +121,13 @@ fct lst.unsafe_set(umax idx, ref src, umax offset) {
 
 
 //safe indexing
-pub fct lst.safe_get(umax idx, ref dst, umax offset) {
+pub fct lst.safe_get(smax idx, ref dst, smax offset) {
 	if idx >= sbj.len { #{lle_oob} ret }
 	#{lle_scc}
 	sbj.unsafe_get(idx, dst, offset)
 }
 
-pub fct lst.safe_set(umax idx, ref src, umax offset) {
+pub fct lst.safe_set(smax idx, ref src, smax offset) {
 	if idx >= sbj.len { #{lle_oob} ret }
 	#{lle_scc}
 	sbj.unsafe_set(idx, src, offset)
@@ -136,7 +136,7 @@ pub fct lst.safe_set(umax idx, ref src, umax offset) {
 
 
 //rm - pop - empty
-pub fct lst.rm(umax idx){
+pub fct lst.rm(smax idx){
 	if idx >= sbj.len { #{lle_oob} ret }
 	#{lle_scc}
 	lst_chk chk = sbj.getChk(idx)
@@ -153,12 +153,12 @@ pub fct lst.rm(umax idx){
 	^Heap.free(chk)
 }
 
-pub fct lst.pop(umax idx, ref dst, umax offset){
+pub fct lst.pop(smax idx, ref dst, smax offset){
 	sbj.safe_get(idx, dst, offset)
 	sbj.rm(idx)
 }
 
-pub fct lst.empty(GUlst sbj){
+pub fct lst.empty(){
 	for i in sbj { sbj.rm(0) } //rm 1st elm, "len" times
 }
 
@@ -168,20 +168,20 @@ pub fct lst.empty(GUlst sbj){
 pub fct lst.isEmpty() boo {
 	ret sbj.len == 0
 }
-pub fct lst.last(ref dst, umax offset) {
+pub fct lst.last(ref dst, smax offset) {
 	sbj.safe_get(sbj.len-1, dst, offset)
 }
 pub fct lst.rmLast() {
 	sbj.rm(sbj.len-1)
 }
-pub fct lst.popLast(ref dst, umax offset) {
+pub fct lst.popLast(ref dst, smax offset) {
 	sbj.pop(sbj.len-1, dst, offset)
 }
 
 
 
 //push
-pub fct lst.push(ref src, umax offset) {
+pub fct lst.push(ref src, smax offset) {
 
 	//allocate new chk
 	lst_chk newChk = ^Heap.new(#lst_chk)
@@ -202,7 +202,7 @@ pub fct lst.push(ref src, umax offset) {
 
 
 //actions as a whole
-pub fct lst.overwrite(ref src, umax offset){
+pub fct lst.overwrite(ref src, smax offset){
 	for i in sbj { sbj.unsafe_set(i, src, offset) }
 }
 
