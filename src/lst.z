@@ -148,7 +148,8 @@ pub fct lst.rm(smax idx){
 	els { sbj.head = chk.nxt }
 
 	//free allocated dat + chk
-	sbj.len -= 1
+	//sbj.len -= 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	sbj.len = sbj.len - 1
 	^Heap.free(chk.dat)
 	^Heap.free(chk)
 }
