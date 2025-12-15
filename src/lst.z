@@ -7,10 +7,10 @@ prv typ lst_chk {
 }
 
 //data structure: main
-pub typ lst {
-	smax    len,
-	smax    itmSz,
-	lst_chk head
+pub typ lst[1] {
+	smax         len,
+	smax         itmSz,
+	ref[lst_chk] head
 }
 
 
@@ -49,11 +49,9 @@ pub typ lst {
     references of a specified size in heap. Every data is stored in heap and user
     never has visibility over internal allocations & memory blocks.
 
-        Every interaction on a dynamic amount of memory involves copy from an
-    existing heap location to another. This way, user loose responsability of the
-    data engaged in any of these operations.
-
-    The only calls involving memory changes at user level are new/free() then.
+        Every interaction on a dynamic amount of memory involves copy from a
+    reserved stack location to an existing heap chunk dedicated. User looses the
+    responsability of carrying dead or alive references.
 
 
 
@@ -64,7 +62,7 @@ pub typ lst {
 
     LICENSE:
 
-    stark-os/dev/core/lst
+    stark-os/stk/zcore/lst
     Copyright (C) 2025 Sebastien SILVANO
 
     This library is free software; you can redistribute it and/or
@@ -91,46 +89,72 @@ pub typ lst {
 // ---------------- BASICS ----------------
 
 //existence
-pub fct lst.init(smax itmSz) {}
+pub fct lst.init(smax itmSz, smax len) {
+	sbj.len   = 0
+	sbj.itmSz = itmSz
+	sbj.head  = null
+}
 
 pub fct lst.free() { sbj.empty() }
+
+prv lst_chk lst_chk_null = lst { 0, 0, null }
 
 
 
 //unsafe indexing
+prv fct ~(ref[lst_chk] r) lst_chk {
+	lst_chk l
+	w(@l, r, #lst_chk)
+	ret l
+}
+
 prv fct lst.getChk(smax idx) lst_chk {
-	lst_chk cur = sbj.head
-	for i on idx { cur = cur.nxt$lst_chk }
-	ret cur
+	lst_chk curChk
+
+	//null head
+	if sbj.head == null { ret lst_chk_null }
+
+	//non-null head (1st chk)
+	ref[lst_chk] curChk_ref = sbj.head
+	w(@curChk, curChk_ref, #lst_chk)
+
+	//nxt chk as long as needed
+	for i on idx {
+		curChk_ref = curChk.nxt
+		w(@curChk, curChk_ref, #lst_chk)
+	}
+	ret curChk
 }
 
 #CFG  LST__UNSAFE_ACCESS { pub \}
 #!CFG LST__UNSAFE_ACCESS { prv \}
-fct lst.unsafe_get(smax idx, ref dst, smax offset) {
-	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  sbj.getChk(sbj, idx).dat, 0, dst, offset, sbj.itmSz) }
-	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(sbj.getChk(sbj, idx).dat, 0, dst, offset, sbj.itmSz) }
+fct lst[dcn].unsafe_get(smax idx) dcn0 {
+	dcn0 res
+	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  sbj.getChk(idx).dat, 0, @res, 0, sbj.itmSz) }
+	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(sbj.getChk(idx).dat, 0, @res, 0, sbj.itmSz) }
+	ret res
 }
 
 #CFG  LST__UNSAFE_ACCESS { pub \}
 #!CFG LST__UNSAFE_ACCESS { prv \}
-fct lst.unsafe_set(smax idx, ref src, smax offset) {
-	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  src, offset, sbj.getChk(sbj, idx).dat, 0, sbj.itmSz) }
-	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(src, offset, sbj.getChk(sbj, idx).dat, 0, sbj.itmSz) }
+fct lst[dcn].unsafe_set(smax idx, dcn0 elm) {
+	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  @elm, 0, sbj.getChk(idx).dat, 0, sbj.itmSz) }
+	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(@elm, 0, sbj.getChk(idx).dat, 0, sbj.itmSz) }
 }
 
 
 
 //safe indexing
-pub fct lst.safe_get(smax idx, ref dst, smax offset) {
-	if idx >= sbj.len { #{lle_oob} ret }
+pub fct lst[dcn].safe_get(smax idx) dcn0 {
+	if idx >= sbj.len { #{lle_oob} ret null }
 	#{lle_scc}
-	sbj.unsafe_get(idx, dst, offset)
+	ret sbj.unsafe_get(idx)
 }
 
-pub fct lst.safe_set(smax idx, ref src, smax offset) {
+pub fct lst[dcn].safe_set(smax idx, dcn0 elm) {
 	if idx >= sbj.len { #{lle_oob} ret }
 	#{lle_scc}
-	sbj.unsafe_set(idx, src, offset)
+	sbj.unsafe_set(idx, elm)
 }
 
 
@@ -151,12 +175,13 @@ pub fct lst.rm(smax idx){
 	//sbj.len -= 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	sbj.len = sbj.len - 1
 	^Heap.free(chk.dat)
-	^Heap.free(chk)
+	^Heap.free(@chk)
 }
 
-pub fct lst.pop(smax idx, ref dst, smax offset){
-	sbj.safe_get(idx, dst, offset)
+pub fct lst[dcn].pop(smax idx) dcn0 {
+	last = sbj.safe_get(idx)
 	sbj.rm(idx)
+	ret last
 }
 
 pub fct lst.empty(){
@@ -166,60 +191,59 @@ pub fct lst.empty(){
 
 
 //last
-pub fct lst.isEmpty() boo {
+pub fct lst.isEmpty() bol {
 	ret sbj.len == 0
 }
-pub fct lst.last(ref dst, smax offset) {
-	sbj.safe_get(sbj.len-1, dst, offset)
+pub fct lst[dcn].last() {
+	ret sbj.safe_get(sbj.len-1)
 }
 pub fct lst.rmLast() {
 	sbj.rm(sbj.len-1)
 }
-pub fct lst.popLast(ref dst, smax offset) {
-	sbj.pop(sbj.len-1, dst, offset)
+pub fct lst[dcn].popLast() dcn0 {
+	ret sbj.pop(sbj.len-1)
 }
 
 
 
 //push
-pub fct lst.push(ref src, smax offset) {
+pub fct lst[dcn].push(dcn0 elm) {
 
-	//allocate new chk
-	lst_chk newChk = ^Heap.new(#lst_chk)
-	newChk.nxt     = null                // <---- in this implementation, this is facultative
+	//allocate dat inside chk
+	newChk_inStack = lst_chk { ^Heap.new(sbj.itmSz), null } // <---- in this implementation, "nxt=null" is facultative
 
-	//allocate & set dat in chk
-	newChk.dat = ^Heap.new(sbj.itmSz)
-	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  src, offset, newChk.dat, 0, sbj.itmSz) } //direct write (tiny optimization)
-	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(src, offset, newChk.dat, 0, sbj.itmSz) }
+	//set dat inside chk
+	#CFG  LST__HEAP_SAFE { ^Heap.safe_w(  @elm, 0, newChk_inStack.dat, 0, sbj.itmSz) } //direct write (tiny optimization)
+	#!CFG LST__HEAP_SAFE { ^Heap.unsafe_w(@elm, 0, newChk_inStack.dat, 0, sbj.itmSz) }
+
+	//allocate new chk in heap
+	ref[lst_chk] newChk_inHeap = ^Heap.new(#lst_chk)
 
 	//attach to lst: empty => to head
-	if sbj.isEmpty() { sbj.head = newChk }
+	if sbj.isEmpty() { sbj.head = @newChk_inHeap }
 
 	//attach to lst: not-empty => to last
-	els{ sbj.getChk(sbj.len-1).nxt = newChk }
+	els{ sbj.getChk(sbj.len-1).nxt = @newChk_inHeap }
+
+	//move from stack into heap allocated
+	w(@newChk_inStack, newChk_inHeap, #lst_chk)
 }
 
 
 
 //actions as a whole
-pub fct lst.overwrite(ref src, smax offset){
-	for i in sbj { sbj.unsafe_set(i, src, offset) }
+pub fct lst[dcn].overwrite(dcn0 elm){
+	for i in sbj { sbj.unsafe_set(i, elm) }
 }
 
 
 
 //actions between lsts
-pub fct lst.copy(lst dst) {
+pub fct lst[dcn].copy(lst[dcn0] dst) {
 	if sbj.itmSz != dst.itmSz { #{lle_fai} ret }
 	#{lle_scc}
 
 	//clear dst lst to add src content instead
 	dst.empty()
-	ref itm = ^Heap.new(sbj.itmSz)
-	for i in sbj {
-		sbj.unsafe_get(i, itm, 0)
-		dst.push(itm, 0)
-	}
-	^Heap.free(itm)
+	for i in sbj { dst.push(sbj.unsafe_get(i)) }
 }

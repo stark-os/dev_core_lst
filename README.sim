@@ -1,6 +1,6 @@
-t0c Linked lists management library
+t0c Linked lists library
 
-l N library for managing linked lists.
+l N library for manipulating linked lists.
 
 b
 b
@@ -28,7 +28,7 @@ t1 Compatibility
 
 t2 Target
 
-l Stark OS \lhttps://github.com/stark-os/dev/core/core\lcore\l.
+l Stark OS \lhttps://github.com/stark-os/stk/zcore/zcore\lzcore\l.
 
 
 t2 Build requirements
@@ -47,7 +47,7 @@ l Nothing to install.
 
 t2 Usage
 
-l See Stark OS \lhttps://github.com/stark-os/dev/core/core\lcore\l.
+l See Stark OS \lhttps://github.com/stark-os/stk/zcore/zcore\lzcore\l.
 
 
 t2 Uninstall
